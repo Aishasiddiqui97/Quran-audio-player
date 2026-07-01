@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512">
+      <stop offset="0%" stop-color="#1e3a5f"/>
+      <stop offset="100%" stop-color="#2d5a8a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="80" fill="url(#bg)"/>
+  <path d="M120 150c0-22 18-40 40-40h192c22 0 40 18 40 40v212c0 22-18 40-40 40H160c-22 0-40-18-40-40V150z" fill="#fff" opacity=".95"/>
+  <path d="M160 110h80v292h-80c-22 0-40-18-40-40V150c0-22 18-40 40-40z" fill="#e2e8f0"/>
+  <text x="256" y="320" text-anchor="middle" font-size="130" font-family="Scheherazade New, serif" fill="#1e3a5f" font-weight="700">ن</text>
+</svg>
