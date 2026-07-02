@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { persist, createJSONStorage } from "zustand/middleware"
 import type { Favorite } from "@/types"
 
 interface FavoriteState {
@@ -43,6 +43,10 @@ export const useFavoriteStore = create<FavoriteState>()(
       },
       clearFavorites: () => set({ favorites: [] }),
     }),
-    { name: "quran-favorites" }
+    {
+      name: "quran-favorites",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ favorites: state.favorites }),
+    }
   )
 )

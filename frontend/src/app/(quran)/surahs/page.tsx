@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { motion } from "framer-motion"
-import { Search, BookOpen, ArrowRight } from "lucide-react"
+import { Search, BookOpen, ArrowRight, LayoutGrid, List, ArrowUpDown, MapPin, BookText, Star } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { SurahCard } from "@/components/quran/SurahCard"
@@ -11,6 +11,8 @@ import { ErrorState } from "@/components/quran/ErrorState"
 import { EmptyState } from "@/components/quran/EmptyState"
 import { useProgressStore } from "@/store/progressStore"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+import { cn } from "@/lib/utils"
 import type { Surah } from "@/types"
 
 interface ApiSurah {
@@ -29,32 +31,6 @@ interface ApiResponse {
 }
 
 const ALQURAN_API = "https://api.alquran.cloud/v1"
-
-const ARABIC_NAMES: Record<number, string> = {
-  1: "الفاتحة", 2: "البقرة", 3: "آل عمران", 4: "النساء", 5: "المائدة",
-  6: "الأنعام", 7: "الأعراف", 8: "الأنفال", 9: "التوبة", 10: "يونس",
-  11: "هود", 12: "يوسف", 13: "الرعد", 14: "إبراهيم", 15: "الحجر",
-  16: "النحل", 17: "الإسراء", 18: "الكهف", 19: "مريم", 20: "طه",
-  21: "الأنبياء", 22: "الحج", 23: "المؤمنون", 24: "النور", 25: "الفرقان",
-  26: "الشعراء", 27: "النمل", 28: "القصص", 29: "العنكبوت", 30: "الروم",
-  31: "لقمان", 32: "السجدة", 33: "الأحزاب", 34: "سبأ", 35: "فاطر",
-  36: "يس", 37: "الصافات", 38: "ص", 39: "الزمر", 40: "غافر",
-  41: "فصلت", 42: "الشورى", 43: "الزخرف", 44: "الدخان", 45: "الجاثية",
-  46: "الأحقاف", 47: "محمد", 48: "الفتح", 49: "الحجرات", 50: "ق",
-  51: "الذاريات", 52: "الطور", 53: "النجم", 54: "القمر", 55: "الرحمن",
-  56: "الواقعة", 57: "الحديد", 58: "المجادلة", 59: "الحشر", 60: "الممتحنة",
-  61: "الصف", 62: "الجمعة", 63: "المنافقون", 64: "التغابن", 65: "الطلاق",
-  66: "التحريم", 67: "الملك", 68: "القلم", 69: "الحاقة", 70: "المعارج",
-  71: "نوح", 72: "الجن", 73: "المزمل", 74: "المدثر", 75: "القيامة",
-  76: "الإنسان", 77: "المرسلات", 78: "النبأ", 79: "النازعات", 80: "عبس",
-  81: "التكوير", 82: "الإنفطار", 83: "المطففين", 84: "الإنشقاق", 85: "البروج",
-  86: "الطارق", 87: "الأعلى", 88: "الغاشية", 89: "الفجر", 90: "البلد",
-  91: "الشمس", 92: "الليل", 93: "الضحى", 94: "الشرح", 95: "التين",
-  96: "العلق", 97: "القدر", 98: "البينة", 99: "الزلزلة", 100: "العاديات",
-  101: "القارعة", 102: "التكاثر", 103: "العصر", 104: "الهمزة", 105: "الفيل",
-  106: "قريش", 107: "الماعون", 108: "الكوثر", 109: "الكافرون", 110: "النصر",
-  111: "المسد", 112: "الإخلاص", 113: "الفلق", 114: "الناس",
-}
 
 const FILLER_WORDS = ["surah", "surahs", "surat", "chapter"]
 
@@ -75,20 +51,13 @@ function cleanSearchQuery(query: string): string {
 }
 
 const SUBSTITUTIONS: Record<string, string[]> = {
-  "k": ["q"],
-  "q": ["k"],
-  "c": ["s", "k"],
-  "s": ["c"],
-  "i": ["e", "y"],
-  "e": ["i", "a"],
-  "a": ["e"],
-  "o": ["u"],
-  "u": ["o"],
+  "k": ["q"], "q": ["k"], "c": ["s", "k"], "s": ["c"],
+  "i": ["e", "y"], "e": ["i", "a"], "a": ["e"],
+  "o": ["u"], "u": ["o"],
 }
 
 function isFuzzyMatch(normalizedQuery: string, normalizedTarget: string): boolean {
   if (normalizedTarget.includes(normalizedQuery)) return true
-
   for (const [from, replacements] of Object.entries(SUBSTITUTIONS)) {
     if (normalizedQuery.includes(from)) {
       for (const to of replacements) {
@@ -97,37 +66,23 @@ function isFuzzyMatch(normalizedQuery: string, normalizedTarget: string): boolea
       }
     }
   }
-
   if (normalizedQuery.endsWith("h") && normalizedTarget.includes(normalizedQuery.slice(0, -1))) return true
   if (normalizedTarget.endsWith("h") && normalizedQuery.includes(normalizedTarget.slice(0, -1))) return true
-
   return false
 }
 
 function searchSurahs(surahs: Surah[], query: string): Surah[] {
   if (!query.trim()) return surahs
-
   const cleanedQuery = cleanSearchQuery(query)
   if (!cleanedQuery) return surahs
-
   const nq = normalizeText(cleanedQuery)
-
   if (!nq) return surahs
-
   return surahs.filter((s) => {
     if (String(s.surahNumber) === cleanedQuery || String(s.surahNumber) === nq) return true
-
-    const searchFields = [
-      s.nameArabic,
-      s.nameSimple,
-      s.nameEnglish,
-    ]
-
+    const searchFields = [s.nameArabic, s.nameSimple, s.nameEnglish]
     for (const field of searchFields) {
-      const nt = normalizeText(field)
-      if (isFuzzyMatch(nq, nt)) return true
+      if (isFuzzyMatch(nq, normalizeText(field))) return true
     }
-
     return false
   })
 }
@@ -135,7 +90,7 @@ function searchSurahs(surahs: Surah[], query: string): Surah[] {
 function mapApiSurah(api: ApiSurah): Surah {
   return {
     surahNumber: api.number,
-    nameArabic: ARABIC_NAMES[api.number] || api.name,
+    nameArabic: api.name,
     nameSimple: api.englishName,
     nameEnglish: api.englishNameTranslation,
     revelationType: api.revelationType,
@@ -144,12 +99,14 @@ function mapApiSurah(api: ApiSurah): Surah {
 }
 
 export default function SurahsPage() {
+  const searchParams = useSearchParams()
   const [surahs, setSurahs] = useState<Surah[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState("")
-  const { getContinueReading } = useProgressStore()
-  const continueReading = getContinueReading()
+  const [search, setSearch] = useState(searchParams.get("search") || "")
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [sortBy, setSortBy] = useState<"number" | "name" | "revelation">("number")
+  const [sortOpen, setSortOpen] = useState(false)
 
   const fetchSurahs = useCallback(async () => {
     setLoading(true)
@@ -170,81 +127,221 @@ export default function SurahsPage() {
     }
   }, [])
 
-  useEffect(() => {
-    fetchSurahs()
-  }, [fetchSurahs])
+  useEffect(() => { fetchSurahs() }, [fetchSurahs])
 
-  const filtered = useMemo(() => searchSurahs(surahs, search), [surahs, search])
+  const stats = useMemo(() => {
+    return {
+      total: surahs.length,
+      meccan: surahs.filter((s) => s.revelationType === "Meccan").length,
+      medinan: surahs.filter((s) => s.revelationType === "Medinan").length,
+      ayahs: surahs.reduce((acc, s) => acc + s.totalAyahs, 0),
+    }
+  }, [surahs])
+
+  const filtered = useMemo(() => {
+    let result = searchSurahs(surahs, search)
+    if (sortBy === "name") {
+      result = [...result].sort((a, b) => a.nameSimple.localeCompare(b.nameSimple))
+    } else if (sortBy === "revelation") {
+      result = [...result].sort((a, b) => {
+        if (a.revelationType === b.revelationType) return a.surahNumber - b.surahNumber
+        return a.revelationType === "Meccan" ? -1 : 1
+      })
+    }
+    return result
+  }, [surahs, search, sortBy])
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="px-4 py-6 md:px-6 lg:px-8 max-w-6xl mx-auto">
+      {/* Hero Banner */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8 text-center"
+        className="relative mb-8 overflow-hidden rounded-2xl border border-islamic-green/20 bg-gradient-to-br from-islamic-green/[0.04] via-card to-islamic-gold/[0.04] p-6 md:p-8"
       >
-        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-          <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Surahs
-          </span>
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Select a surah to begin reading
-        </p>
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: `radial-gradient(circle at 70% 30%, #0B6B3A 0%, transparent 50%)`,
+        }} />
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-islamic-green/10 to-islamic-gold/10 border border-islamic-green/20">
+              <BookText className="h-6 w-6 text-islamic-green" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+                All <span className="bg-gradient-to-r from-islamic-green to-islamic-green-dark bg-clip-text text-transparent">Surahs</span>
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Browse and recite from the 114 surahs of the Holy Quran
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-1.5 rounded-lg bg-islamic-green/5 border border-islamic-green/10 px-3 py-1.5">
+              <BookOpen className="h-3.5 w-3.5 text-islamic-green" />
+              <span className="text-xs font-medium text-foreground">{stats.total} Surahs</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg bg-islamic-gold/5 border border-islamic-gold/10 px-3 py-1.5">
+              <MapPin className="h-3.5 w-3.5 text-islamic-gold" />
+              <span className="text-xs font-medium text-foreground">{stats.meccan} Meccan</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg bg-islamic-green/5 border border-islamic-green/10 px-3 py-1.5">
+              <Star className="h-3.5 w-3.5 text-islamic-green" />
+              <span className="text-xs font-medium text-foreground">{stats.medinan} Medinan</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg bg-islamic-gold/5 border border-islamic-gold/10 px-3 py-1.5">
+              <BookText className="h-3.5 w-3.5 text-islamic-gold" />
+              <span className="text-xs font-medium text-foreground">{stats.ayahs.toLocaleString()} Ayahs</span>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
-      {continueReading && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
-        >
-          <Link href={`/surahs/${continueReading.surahNumber}`}>
+      {/* Continue Reading */}
+      <ContinueReadingSection />
+
+      {/* Toolbar */}
+      {!loading && !error && (
+        <div className="flex items-center gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or number..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 h-11 rounded-xl border-border/60 bg-card/60 focus-visible:border-islamic-green/50"
+            />
+          </div>
+          <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-card/60 p-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn("h-8 w-8", viewMode === "grid" && "bg-accent/10 text-islamic-green")}
+              onClick={() => setViewMode("grid")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn("h-8 w-8", viewMode === "list" && "bg-accent/10 text-islamic-green")}
+              onClick={() => setViewMode("list")}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="relative">
             <Button
               variant="outline"
-              className="w-full gap-2 border-primary/30 hover:border-primary"
+              className="h-11 rounded-xl border-border/60 gap-2"
+              onClick={() => setSortOpen(!sortOpen)}
             >
-              <BookOpen className="h-4 w-4" />
-              Continue Reading: Surah {continueReading.surahNumber} (Ayah{" "}
-              {continueReading.ayahNumber})
-              <ArrowRight className="h-4 w-4" />
+              <ArrowUpDown className="h-4 w-4" />
+              <span className="text-sm hidden sm:inline">
+                {sortBy === "number" ? "Number" : sortBy === "name" ? "Name" : "Revelation"}
+              </span>
             </Button>
-          </Link>
-        </motion.div>
-      )}
-
-      {!loading && !error && (
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search surahs by name or number..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+            {sortOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} />
+                <div className="absolute right-0 top-full mt-1.5 bg-card border border-border/60 rounded-xl shadow-soft p-1.5 z-20 min-w-[170px]">
+                  {(["number", "name", "revelation"] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => { setSortBy(opt); setSortOpen(false) }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors",
+                        sortBy === opt ? "bg-islamic-green/10 text-islamic-green font-medium" : "hover:bg-muted"
+                      )}
+                    >
+                      {opt === "number" ? "Surah Number" : opt === "name" ? "Name (A-Z)" : "Revelation Order"}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
+      {/* Results count */}
+      {!loading && !error && search && (
+        <p className="text-xs text-muted-foreground mb-3">
+          {filtered.length} surah{filtered.length !== 1 && "s"} found
+          {search && <> for &ldquo;{search}&rdquo;</>}
+        </p>
+      )}
+
+      {/* Grid/List */}
       {loading ? (
-        <SurahSkeleton />
+        <SurahSkeleton viewMode={viewMode} />
       ) : error ? (
         <ErrorState message={error} onRetry={fetchSurahs} />
       ) : filtered.length === 0 ? (
         <EmptyState
           title="No Surah Found"
-          description={
-            search
-              ? `No surah matches "${search}"`
-              : "No surahs available"
-          }
+          description={search ? `No surah matches "${search}"` : "No surahs available"}
         />
       ) : (
-        <div className="grid gap-3">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className={viewMode === "grid" ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "space-y-2"}
+        >
           {filtered.map((surah, index) => (
-            <SurahCard key={surah.surahNumber} surah={surah} index={index} />
+            <motion.div
+              key={surah.surahNumber}
+              variants={{
+                hidden: { opacity: 0, y: 10 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+              }}
+            >
+              <SurahCard surah={surah} index={index} viewMode={viewMode} />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
+  )
+}
+
+function ContinueReadingSection() {
+  const [show, setShow] = useState(false)
+  const [data, setData] = useState<{ surahNumber: number; ayahNumber: number } | null>(null)
+
+  useEffect(() => {
+    const { getContinueReading } = useProgressStore.getState()
+    const reading = getContinueReading()
+    if (reading) {
+      setData(reading)
+      setShow(true)
+    }
+  }, [])
+
+  if (!show) return null
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-5"
+    >
+      <Link href={`/surahs/${data!.surahNumber}`}>
+        <Button
+          variant="outline"
+          className="w-full gap-2 border-islamic-green/30 hover:border-islamic-green text-islamic-green hover:bg-islamic-green/5 h-11 rounded-xl"
+        >
+          <BookOpen className="h-4 w-4" />
+          Continue Reading: Surah {data!.surahNumber} &mdash; Ayah {data!.ayahNumber}
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </Link>
+    </motion.div>
   )
 }

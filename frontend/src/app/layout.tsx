@@ -1,50 +1,39 @@
 import type { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/ThemeProvider"
-import { Navbar } from "@/components/Navbar"
-import { Footer } from "@/components/Footer"
 import { Toaster } from "@/components/ui/toaster"
 import { SkipToContent } from "@/components/SkipToContent"
 import { DynamicProviders } from "@/components/DynamicProviders"
 
-const inter = Inter({ subsets: ["latin"] })
-
 export const metadata: Metadata = {
   title: {
-    default: "Noor-ul-Quran - Your Digital Quran Companion",
-    template: "%s | Noor-ul-Quran",
+    default: "Quran Audio - Listen & Read the Holy Quran",
+    template: "%s | Quran Audio",
   },
   description:
-    "A modern digital platform for reading, studying, and connecting with the Holy Quran. Read with translations, word-by-word analysis, and audio recitations.",
+    "A beautiful digital platform for reading, listening, and connecting with the Holy Quran.",
   keywords: [
-    "Quran",
-    "Holy Quran",
-    "Islamic",
-    "reading",
-    "study",
-    "Noor-ul-Quran",
-    "digital quran",
-    "quran reader",
+    "Quran", "Holy Quran", "Quran audio", "Islamic", "Quran player",
+    "quran recitation", "Mishary Alafasy",
   ],
-  authors: [{ name: "Noor-ul-Quran" }],
-  creator: "Noor-ul-Quran",
-  publisher: "Noor-ul-Quran",
+  authors: [{ name: "Quran Audio" }],
+  creator: "Quran Audio",
+  publisher: "Quran Audio",
   metadataBase: new URL("https://noorulquran.com"),
   openGraph: {
-    title: "Noor-ul-Quran - Your Digital Quran Companion",
+    title: "Quran Audio - Listen & Read the Holy Quran",
     description:
-      "A modern digital platform for reading, studying, and connecting with the Holy Quran.",
+      "A beautiful digital platform for reading, listening, and connecting with the Holy Quran.",
     url: "https://noorulquran.com",
-    siteName: "Noor-ul-Quran",
+    siteName: "Quran Audio",
     locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Noor-ul-Quran - Your Digital Quran Companion",
+    title: "Quran Audio - Listen & Read the Holy Quran",
     description:
-      "A modern digital platform for reading, studying, and connecting with the Holy Quran.",
+      "A beautiful digital platform for reading, listening, and connecting with the Holy Quran.",
   },
   icons: {
     icon: "/favicon.svg",
@@ -56,8 +45,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
+    { media: "(prefers-color-scheme: light)", color: "#0B6B3A" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a1a10" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -67,10 +56,10 @@ export const viewport: Viewport = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  name: "Noor-ul-Quran",
+  name: "Quran Audio",
   url: "https://noorulquran.com",
   description:
-    "A modern digital platform for reading, studying, and connecting with the Holy Quran.",
+    "A beautiful digital platform for reading, listening, and connecting with the Holy Quran.",
   potentialAction: {
     "@type": "SearchAction",
     target: {
@@ -88,7 +77,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className="font-poppins premium-bg">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -100,11 +89,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="flex min-h-screen flex-col">
-            <Navbar />
-            <main id="main-content" className="flex-1 pb-16 md:pb-16">{children}</main>
-            <Footer />
-          </div>
+          {children}
           <DynamicProviders />
           <Toaster />
         </ThemeProvider>

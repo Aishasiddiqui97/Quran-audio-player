@@ -1,6 +1,12 @@
-export default function RootLoading() {
+import { cn } from "@/lib/utils"
+
+interface PageLoadingProps {
+  className?: string
+}
+
+export function PageLoading({ className }: PageLoadingProps) {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className={cn("container mx-auto px-4 py-8", className)}>
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-center py-20">
           <div className="relative flex items-center justify-center">

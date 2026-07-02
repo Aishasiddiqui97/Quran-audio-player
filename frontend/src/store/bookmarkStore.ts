@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { persist, createJSONStorage } from "zustand/middleware"
 import type { Bookmark } from "@/types"
 
 interface BookmarkState {
@@ -44,6 +44,10 @@ export const useBookmarkStore = create<BookmarkState>()(
       },
       clearBookmarks: () => set({ bookmarks: [] }),
     }),
-    { name: "quran-bookmarks" }
+    {
+      name: "quran-bookmarks",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ bookmarks: state.bookmarks }),
+    }
   )
 )

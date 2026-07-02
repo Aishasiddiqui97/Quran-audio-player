@@ -85,13 +85,13 @@ export function ProgressBar({
         onTouchStart={handleSeek}
         onKeyDown={handleKeyDown}
       >
-        <div className="absolute inset-0 rounded-full bg-muted-foreground/20" />
+        <div className="absolute inset-0 rounded-full bg-islamic-green/10" />
         <div
-          className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-100"
+          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-islamic-green to-islamic-green-dark transition-all duration-100"
           style={{ width: `${Math.min(100, progress)}%` }}
         />
         <div
-          className="absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-primary opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shadow-md"
+          className="absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-islamic-gold opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shadow-md border-2 border-white"
           style={{ left: `calc(${Math.min(100, progress)}% - 8px)` }}
         />
       </div>

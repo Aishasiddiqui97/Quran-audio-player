@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { Book, BookOpen, Bot, LayoutDashboard, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/store/authStore"
+import { useAudioPlayerStore } from "@/store/audioPlayerStore"
 
 const links = [
   { href: "/", label: "Home", icon: Book, auth: false },
@@ -17,6 +18,7 @@ const links = [
 export function BottomNavigation() {
   const pathname = usePathname()
   const { isAuthenticated } = useAuthStore()
+  const { currentTrack } = useAudioPlayerStore()
 
   const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password"
 
@@ -24,7 +26,8 @@ export function BottomNavigation() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/80 backdrop-blur-lg md:hidden safe-area-bottom"
+      className="fixed bottom-0 left-0 right-0 z-40 glass-strong md:hidden safe-area-bottom"
+      style={{ bottom: currentTrack ? "64px" : "0" }}
       aria-label="Bottom navigation"
     >
       <div className="flex items-center justify-around px-2 pb-safe">
@@ -37,14 +40,22 @@ export function BottomNavigation() {
               key={link.href}
               href={link.href}
               className={cn(
-                "flex flex-col items-center gap-0.5 py-2 px-3 min-w-0 transition-colors",
+                "relative flex flex-col items-center gap-0.5 py-2 px-3 min-w-0 transition-all",
                 isActive
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "text-islamic-green"
+                  : "text-muted-foreground hover:text-islamic-green-dark"
               )}
             >
-              <Icon className="h-5 w-5" />
+              <div className={cn(
+                "rounded-full p-1.5 transition-all",
+                isActive && "bg-islamic-green/10"
+              )}>
+                <Icon className="h-5 w-5" />
+              </div>
               <span className="text-[10px] font-medium leading-none">{link.label}</span>
+              {isActive && (
+                <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 h-1 w-6 rounded-full bg-islamic-green" />
+              )}
             </Link>
           )
         })}

@@ -1,9 +1,10 @@
 "use client"
 
-import { useRef, useCallback, useState } from "react"
+import { useCallback } from "react"
 import { Play, Pause, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAudioPlayerStore } from "@/store/audioPlayerStore"
+import { cn } from "@/lib/utils"
 
 interface PlayButtonProps {
   surahNumber: number
@@ -20,9 +21,6 @@ export function PlayButton({
   audioUrl,
   size = "icon",
 }: PlayButtonProps) {
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const [localPlaying, setLocalPlaying] = useState(false)
-  const [localLoading, setLocalLoading] = useState(false)
   const { currentTrack, isPlaying, isLoading, setTrack, togglePlay } =
     useAudioPlayerStore()
 
@@ -31,67 +29,48 @@ export function PlayButton({
     currentTrack?.ayahNumber === ayahNumber
 
   const handlePlay = useCallback(() => {
+    if (!audioUrl) return
+
     if (isCurrentTrack) {
       togglePlay()
       return
     }
 
-    if (!audioUrl) return
-
     const track = { surahNumber, ayahNumber, surahName, audioUrl }
     setTrack(track)
-
-    const audio = audioRef.current
-    if (audio) {
-      setLocalLoading(true)
-      audio.src = audioUrl
-      audio.volume = 0.8
-
-      const onCanPlay = () => {
-        audio.removeEventListener("canplay", onCanPlay)
-        audio.play().then(() => {
-          setLocalPlaying(true)
-          setLocalLoading(false)
-        }).catch(() => {
-          setLocalPlaying(false)
-          setLocalLoading(false)
-        })
-      }
-      audio.addEventListener("canplay", onCanPlay)
-    }
   }, [isCurrentTrack, togglePlay, audioUrl, surahNumber, ayahNumber, surahName, setTrack])
 
-  const iconSize = size === "sm" ? "h-3 w-3" : "h-4 w-4"
+  const isActive = isCurrentTrack && isPlaying
+  const showLoading = isLoading && isCurrentTrack
 
   return (
-    <>
-      <audio
-        ref={audioRef}
-        preload="none"
-        onEnded={() => setLocalPlaying(false)}
-      />
-      <Button
-        variant={isCurrentTrack && isPlaying ? "default" : "outline"}
-        size={size}
-        className={`shrink-0 ${size === "sm" ? "h-7 w-7" : ""}`}
-        onClick={handlePlay}
-        disabled={!audioUrl}
-        aria-label={
-          !audioUrl
-            ? "Audio unavailable"
-            : isCurrentTrack && isPlaying
-            ? `Pause ${surahName} verse ${ayahNumber}`
-            : `Play ${surahName} verse ${ayahNumber}`
-        }
-      >
-        {(isLoading && isCurrentTrack) || localLoading ? (
-          <Loader2 className={`${iconSize} animate-spin`} />
-        ) : isCurrentTrack && isPlaying ? (
-          <Pause className={iconSize} />
-        ) : (
-          <Play className={iconSize} />
-        )}
-      </Button>
-    </>
+    <Button
+      variant="ghost"
+      size={size}
+      className={cn(
+        "shrink-0 rounded-full transition-all",
+        size === "sm" ? "h-8 w-8" : "h-9 w-9",
+        isActive
+          ? "bg-islamic-gold text-white hover:bg-islamic-gold-dark shadow-sm animate-gold-glow"
+          : "bg-islamic-green/10 text-islamic-green hover:bg-islamic-green hover:text-white"
+      )}
+      onClick={handlePlay}
+      disabled={!audioUrl}
+      aria-label={
+        !audioUrl
+          ? "Audio unavailable"
+          : isActive
+          ? `Pause ${surahName} verse ${ayahNumber}`
+          : `Play ${surahName} verse ${ayahNumber}`
+      }
+    >
+      {showLoading ? (
+        <Loader2 className="h-3.5 w-3.5 animate-islamic-spin" />
+      ) : isActive ? (
+        <Pause className="h-3.5 w-3.5 fill-current" />
+      ) : (
+        <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
+      )}
+    </Button>
   )
 }

@@ -8,6 +8,7 @@ export interface AudioTrack {
   ayahNumber: number
   surahName: string
   audioUrl: string
+  reciterName?: string
 }
 
 interface AudioPlayerState {
@@ -59,10 +60,11 @@ export const useAudioPlayerStore = create<AudioPlayerState>()(
       setTrack: (track) =>
         set({
           currentTrack: track,
-          isPlaying: true,
+          isPlaying: false,
           currentTime: 0,
           duration: 0,
           isExpanded: true,
+          isLoading: true,
         }),
 
       setQueue: (tracks, startIndex = 0) =>
@@ -70,10 +72,11 @@ export const useAudioPlayerStore = create<AudioPlayerState>()(
           queue: tracks,
           queueIndex: startIndex,
           currentTrack: tracks[startIndex] || null,
-          isPlaying: true,
+          isPlaying: false,
           currentTime: 0,
           duration: 0,
           isExpanded: true,
+          isLoading: true,
         }),
 
       setPlaying: (playing) => set({ isPlaying: playing }),

@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { persist, createJSONStorage } from "zustand/middleware"
 import type { Highlight } from "@/types"
 
 const HIGHLIGHT_COLORS = [
@@ -62,6 +62,10 @@ export const useHighlightStore = create<HighlightState>()(
       },
       clearHighlights: () => set({ highlights: [] }),
     }),
-    { name: "quran-highlights" }
+    {
+      name: "quran-highlights",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ highlights: state.highlights }),
+    }
   )
 )

@@ -47,9 +47,9 @@ export const AyahCard = memo(function AyahCard({
 
   const arabicFontClass =
     arabicFont === "uthmani"
-      ? "font-arabic"
+      ? "font-amiri"
       : arabicFont === "simple"
-      ? "font-arabic-simple"
+      ? "font-scheherazade"
       : arabicFont === "indopak"
       ? "font-arabic-indopak"
       : "font-arabic-nastaleeq"
@@ -59,10 +59,11 @@ export const AyahCard = memo(function AyahCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "group relative rounded-lg border p-4 md:p-6 transition-all",
-        "hover:border-primary/30 hover:shadow-sm",
-        isBookmarked && "border-yellow-400/50 bg-yellow-50/30 dark:bg-yellow-950/10",
-        isFavorited && "border-pink-400/50 bg-pink-50/30 dark:bg-pink-950/10",
+        "group relative rounded-xl border border-islamic-green/10 bg-card/60 backdrop-blur-sm p-4 md:p-6 transition-all",
+        "hover:border-islamic-green/30 hover:bg-card/80 hover:shadow-md",
+        "surah-card-glow",
+        isBookmarked && "border-islamic-gold/50 bg-islamic-gold/5",
+        isFavorited && "border-islamic-green/50 bg-islamic-green/5",
         highlight && "border-transparent"
       )}
       style={
@@ -80,7 +81,7 @@ export const AyahCard = memo(function AyahCard({
         <div className="flex flex-col items-center gap-2 shrink-0">
           {showVerseNumber && (
             <div
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-islamic-green/10 to-islamic-gold/10 text-xs font-semibold text-islamic-green border border-islamic-green/20"
               aria-label={`Verse number ${ayah.ayahNumber}`}
             >
               {ayah.ayahNumber}
@@ -97,7 +98,7 @@ export const AyahCard = memo(function AyahCard({
         <div className="flex-1 space-y-3">
           <div
             className={cn(
-              "text-right leading-relaxed",
+              "text-right leading-relaxed text-islamic-green-dark dark:text-islamic-green/90",
               arabicFontClass
             )}
             style={{ fontSize: `${fontSize}px` }}
@@ -112,7 +113,7 @@ export const AyahCard = memo(function AyahCard({
 
           {translationLanguage !== "off" && translation && (
             <div
-              className="text-sm leading-relaxed text-muted-foreground border-t pt-3"
+              className="text-sm leading-relaxed text-muted-foreground border-t border-islamic-green/10 pt-3"
               style={{ fontSize: `${Math.max(14, fontSize - 6)}px` }}
             >
               {translation.text}

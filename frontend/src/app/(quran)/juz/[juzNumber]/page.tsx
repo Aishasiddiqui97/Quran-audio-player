@@ -27,8 +27,11 @@ export default function JuzPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const { addBookmark, removeBookmark, isBookmarked } = useBookmarkStore()
-  const { toggleFavorite, isFavorite } = useFavoriteStore()
+  const bookmarks = useBookmarkStore((s) => s.bookmarks)
+  const addBookmark = useBookmarkStore((s) => s.addBookmark)
+  const removeBookmark = useBookmarkStore((s) => s.removeBookmark)
+  const favorites = useFavoriteStore((s) => s.favorites)
+  const toggleFavorite = useFavoriteStore((s) => s.toggleFavorite)
   const { toggleHighlight } = useHighlightStore()
   const { translationLanguage } = useReaderStore()
 
@@ -164,10 +167,10 @@ export default function JuzPage() {
               ayah={ayah}
               surahName={surahNames[ayah.surahNumber] || `Surah ${ayah.surahNumber}`}
               translation={translations[`${ayah.surahNumber}:${ayah.ayahNumber}`]}
-              isBookmarked={isBookmarked(ayah.surahNumber, ayah.ayahNumber)}
-              isFavorited={isFavorite(ayah.surahNumber, ayah.ayahNumber)}
+              isBookmarked={bookmarks.some((b) => b.surahNumber === ayah.surahNumber && b.ayahNumber === ayah.ayahNumber)}
+              isFavorited={favorites.some((f) => f.surahNumber === ayah.surahNumber && f.ayahNumber === ayah.ayahNumber)}
               onToggleBookmark={() => {
-                if (isBookmarked(ayah.surahNumber, ayah.ayahNumber)) {
+                if (bookmarks.some((b) => b.surahNumber === ayah.surahNumber && b.ayahNumber === ayah.ayahNumber)) {
                   removeBookmark(ayah.surahNumber, ayah.ayahNumber)
                 } else {
                   addBookmark(ayah.surahNumber, ayah.ayahNumber)

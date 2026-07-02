@@ -3,19 +3,24 @@
 import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import { Book, MapPin, Play, ChevronDown, User, Globe, Loader2 } from "lucide-react"
 import { useSwipe } from "@/hooks/useSwipe"
-import { SurahHeader } from "@/components/quran/SurahHeader"
 import { AyahCard } from "@/components/quran/AyahCard"
 import { FontControls } from "@/components/quran/FontControls"
 import { ReadingProgress } from "@/components/quran/ReadingProgress"
 import { AyahSkeleton } from "@/components/quran/AyahSkeleton"
 import { ErrorState } from "@/components/quran/ErrorState"
 import { EmptyState } from "@/components/quran/EmptyState"
+import { Button } from "@/components/ui/button"
+import { RippleButton } from "@/components/ui/RippleButton"
 import { useBookmarkStore } from "@/store/bookmarkStore"
 import { useFavoriteStore } from "@/store/favoriteStore"
 import { useHighlightStore } from "@/store/highlightStore"
 import { useProgressStore } from "@/store/progressStore"
 import { useReaderStore } from "@/store/readerStore"
+import { useAudioPlayerStore } from "@/store/audioPlayerStore"
+import { cn } from "@/lib/utils"
+import Link from "next/link"
 import type { Surah, Ayah, Translation } from "@/types"
 
 const ALQURAN_API = "https://api.alquran.cloud/v1"
@@ -46,6 +51,20 @@ const ARABIC_NAMES: Record<number, string> = {
   111: "المسد", 112: "الإخلاص", 113: "الفلق", 114: "الناس",
 }
 
+const RECITERS = [
+  { id: "mishaari_raashid_al_3afaasee", name: "Mishary Alafasy", country: "Kuwait" },
+  { id: "abdurrahmaan_as-sudays", name: "Abdul Rahman Al-Sudais", country: "Saudi Arabia" },
+  { id: "sa3d_al-ghaamidi", name: "Saad Al Ghamidi", country: "Saudi Arabia" },
+]
+
+const TRANSLATIONS = [
+  { value: "en.asad", label: "English (Muhammad Asad)", lang: "en" },
+  { value: "ur.jalandhry", label: "Urdu (Mahmood ul Hassan)", lang: "ur" },
+  { value: "en.pickthall", label: "English (Pickthall)", lang: "en" },
+  { value: "en.yusufali", label: "English (Yusuf Ali)", lang: "en" },
+  { value: "en.sahih", label: "English (Saheeh International)", lang: "en" },
+]
+
 interface ApiEdition {
   edition: { identifier: string; language: string; name: string }
   ayahs: ApiAyah[]
@@ -68,18 +87,22 @@ interface ApiEditionsResponse {
   data: ApiEdition[]
 }
 
+const pad = (n: number) => String(n).padStart(3, "0")
+
+function getPad(n: number): string {
+  if (n <= 9) return `00${n}`
+  if (n <= 99) return `0${n}`
+  return String(n)
+}
+
 export default function SurahPage() {
   const params = useParams()
   const surahNumber = parseInt(params.surahNumber as string, 10)
 
   const router = useRouter()
   const swipeHandlers = useSwipe({
-    onSwipeLeft: () => {
-      if (surahNumber < 114) router.push(`/surahs/${surahNumber + 1}`)
-    },
-    onSwipeRight: () => {
-      if (surahNumber > 1) router.push(`/surahs/${surahNumber - 1}`)
-    },
+    onSwipeLeft: () => { if (surahNumber < 114) router.push(`/surahs/${surahNumber + 1}`) },
+    onSwipeRight: () => { if (surahNumber > 1) router.push(`/surahs/${surahNumber - 1}`) },
   })
 
   const [surah, setSurah] = useState<Surah | null>(null)
@@ -88,14 +111,35 @@ export default function SurahPage() {
   const [urduTranslations, setUrduTranslations] = useState<Record<string, Translation>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedReciter, setSelectedReciter] = useState(RECITERS[0])
+  const [reciterOpen, setReciterOpen] = useState(false)
 
-  const pad = (n: number) => String(n).padStart(3, "0")
-  const surahAudioUrl = `https://download.quranicaudio.com/quran/mishaari_raashid_al_3afaasee/${pad(surahNumber)}.mp3`
+  const surahAudioUrl = `https://download.quranicaudio.com/quran/${selectedReciter.id}/${getPad(surahNumber)}.mp3`
 
-  const { addBookmark, removeBookmark, isBookmarked } = useBookmarkStore()
-  const { toggleFavorite, isFavorite } = useFavoriteStore()
+  const bookmarks = useBookmarkStore((s) => s.bookmarks)
+  const addBookmark = useBookmarkStore((s) => s.addBookmark)
+  const removeBookmark = useBookmarkStore((s) => s.removeBookmark)
+  const favorites = useFavoriteStore((s) => s.favorites)
+  const toggleFavorite = useFavoriteStore((s) => s.toggleFavorite)
   const { toggleHighlight } = useHighlightStore()
-  const { translationLanguage } = useReaderStore()
+  const { translationLanguage, setTranslationLanguage } = useReaderStore()
+  const { currentTrack, isPlaying, isLoading, setTrack, togglePlay } = useAudioPlayerStore()
+
+  const isCurrentTrack = currentTrack?.surahNumber === surahNumber && currentTrack?.ayahNumber === 1
+
+  const handlePlaySurah = () => {
+    if (isCurrentTrack) {
+      togglePlay()
+    } else {
+      setTrack({
+        surahNumber,
+        ayahNumber: 1,
+        surahName: surah?.nameSimple || surah?.nameArabic || `Surah ${surahNumber}`,
+        audioUrl: surahAudioUrl,
+        reciterName: selectedReciter.name,
+      })
+    }
+  }
 
   const fetchSurah = useCallback(async () => {
     setLoading(true)
@@ -103,7 +147,7 @@ export default function SurahPage() {
 
     try {
       const editionsRes = await fetch(
-        `${ALQURAN_API}/surah/${surahNumber}/editions/quran-uthmani,en.asad,ur.jalandhry`
+        `${ALQURAN_API}/surah/${surahNumber}/editions/quran-uthmani,en.asad,ur.jalandhry,en.pickthall,en.yusufali,en.sahih`
       )
       const editionsJson: ApiEditionsResponse = await editionsRes.json()
 
@@ -113,8 +157,6 @@ export default function SurahPage() {
 
       const editions = editionsJson.data
       const uthmani = editions.find((e) => e.edition.identifier === "quran-uthmani")
-      const enAsad = editions.find((e) => e.edition.identifier === "en.asad")
-      const urJalandhry = editions.find((e) => e.edition.identifier === "ur.jalandhry")
 
       if (!uthmani?.ayahs?.length) {
         throw new Error("No ayah data received")
@@ -158,37 +200,35 @@ export default function SurahPage() {
       }))
       setAyahs(mappedAyahs)
 
+      const allTranslations: Record<string, Translation[]> = {}
+      editions
+        .filter((e) => e.edition.identifier !== "quran-uthmani" && e.ayahs?.length)
+        .forEach((e) => {
+          e.ayahs.forEach((a: ApiAyah, idx: number) => {
+            const ayahNum = a.numberInSurah || apiAyahs[idx]?.numberInSurah || (idx + 1)
+            const key = `${surahNumber}:${ayahNum}`
+            if (!allTranslations[key]) allTranslations[key] = []
+            allTranslations[key].push({
+              surahNumber,
+              ayahNumber: ayahNum,
+              language: e.edition.language,
+              translator: e.edition.name,
+              translationEdition: e.edition.identifier,
+              text: a.text,
+            })
+          })
+        })
+
       const enMap: Record<string, Translation> = {}
       const urMap: Record<string, Translation> = {}
-
-      if (enAsad?.ayahs) {
-        enAsad.ayahs.forEach((a: ApiAyah, idx: number) => {
-          const ayahNum = a.numberInSurah || apiAyahs[idx]?.numberInSurah || (idx + 1)
-          enMap[`${surahNumber}:${ayahNum}`] = {
-            surahNumber,
-            ayahNumber: ayahNum,
-            language: "en",
-            translator: "Muhammad Asad",
-            translationEdition: "en.asad",
-            text: a.text,
-          }
+      Object.values(allTranslations).forEach((transList) => {
+        transList.forEach((t) => {
+          const key = `${t.surahNumber}:${t.ayahNumber}`
+          if (t.language === "ur") urMap[key] = t
+          else enMap[key] = t
         })
-      }
+      })
       setEnglishTranslations(enMap)
-
-      if (urJalandhry?.ayahs) {
-        urJalandhry.ayahs.forEach((a: ApiAyah, idx: number) => {
-          const ayahNum = a.numberInSurah || apiAyahs[idx]?.numberInSurah || (idx + 1)
-          urMap[`${surahNumber}:${ayahNum}`] = {
-            surahNumber,
-            ayahNumber: ayahNum,
-            language: "ur",
-            translator: "Mahmood ul Hassan",
-            translationEdition: "ur.jalandhry",
-            text: a.text,
-          }
-        })
-      }
       setUrduTranslations(urMap)
     } catch {
       setError("Failed to load surah data. Please try again.")
@@ -197,13 +237,11 @@ export default function SurahPage() {
     }
   }, [surahNumber])
 
-  useEffect(() => {
-    fetchSurah()
-  }, [fetchSurah])
+  useEffect(() => { fetchSurah() }, [fetchSurah])
 
   useEffect(() => {
     if (surah) {
-      document.title = `${surah.nameSimple || `Surah ${surahNumber}`} - Surah ${surahNumber} | Noor-ul-Quran`
+      document.title = `${surah.nameSimple || `Surah ${surahNumber}`} - Surah ${surahNumber} | Quran Audio`
       const metaDesc = document.querySelector('meta[name="description"]')
       if (metaDesc) {
         metaDesc.setAttribute(
@@ -216,25 +254,15 @@ export default function SurahPage() {
 
   function getPrimaryTranslation(ayahNumber: number): Translation | undefined {
     if (translationLanguage === "off") return undefined
-    if (translationLanguage === "ur") {
-      return urduTranslations[`${surahNumber}:${ayahNumber}`]
-    }
+    if (translationLanguage === "ur") return urduTranslations[`${surahNumber}:${ayahNumber}`]
     return englishTranslations[`${surahNumber}:${ayahNumber}`]
-  }
-
-  function getSecondaryTranslation(ayahNumber: number): Translation | undefined {
-    if (translationLanguage === "off") return undefined
-    if (translationLanguage === "ur") {
-      return englishTranslations[`${surahNumber}:${ayahNumber}`]
-    }
-    return urduTranslations[`${surahNumber}:${ayahNumber}`]
   }
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="mx-auto max-w-3xl space-y-6">
-          <div className="h-48 animate-pulse rounded-xl bg-muted" />
+      <div className="px-4 py-6 md:px-6 lg:px-8 max-w-3xl mx-auto">
+        <div className="space-y-6">
+          <div className="h-56 animate-pulse rounded-2xl bg-gradient-to-br from-islamic-green/5 to-islamic-gold/5" />
           <AyahSkeleton />
         </div>
       </div>
@@ -243,7 +271,7 @@ export default function SurahPage() {
 
   if (error || !surah) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="px-4 py-6 md:px-6 lg:px-8 max-w-3xl mx-auto">
         <ErrorState message={error || "Surah not found"} onRetry={fetchSurah} />
       </div>
     )
@@ -251,17 +279,153 @@ export default function SurahPage() {
 
   if (ayahs.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <SurahHeader surah={surah} />
+      <div className="px-4 py-6 md:px-6 lg:px-8 max-w-3xl mx-auto">
         <EmptyState title="No verses found" description="This surah has no verses loaded." />
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 py-8" {...swipeHandlers}>
-      <div className="mx-auto max-w-3xl space-y-6">
-        <SurahHeader surah={surah} />
+    <div className="px-4 py-6 md:px-6 lg:px-8 max-w-3xl mx-auto" {...swipeHandlers}>
+      <div className="space-y-5">
+        {/* Premium Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-islamic-green/[0.06] via-transparent to-islamic-gold/[0.04] p-6 md:p-8"
+        >
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: `radial-gradient(circle at 20% 50%, #0B6B3A 0%, transparent 50%)`,
+          }} />
+          <div className="relative flex flex-col items-center text-center space-y-4">
+            <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-islamic-green to-islamic-green-dark flex items-center justify-center shadow-lg shadow-islamic-green/20">
+              <span className="text-3xl font-bold text-white">{surah.surahNumber}</span>
+            </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold font-amiri text-islamic-green-dark dark:text-islamic-green/90" dir="rtl">
+                {surah.nameArabic}
+              </h1>
+              <h2 className="text-xl font-semibold mt-1">{surah.nameSimple}</h2>
+              <p className="text-sm text-muted-foreground italic mt-0.5">{surah.nameEnglish}</p>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <MapPin className="h-4 w-4 text-islamic-gold" />
+                {surah.revelationType}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Book className="h-4 w-4 text-islamic-gold" />
+                {surah.totalAyahs} verses
+              </span>
+            </div>
+
+            {/* Reciter Selector */}
+            <div className="relative w-full max-w-xs">
+              <button
+                onClick={() => setReciterOpen(!reciterOpen)}
+                className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/60 bg-card/60 text-sm hover:border-islamic-green/30 transition-all"
+              >
+                <User className="h-4 w-4 text-islamic-green shrink-0" />
+                <span className="flex-1 text-left truncate">{selectedReciter.name}</span>
+                <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", reciterOpen && "rotate-180")} />
+              </button>
+              {reciterOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute top-full mt-1 left-0 right-0 bg-card border border-border/60 rounded-xl shadow-soft overflow-hidden z-10"
+                >
+                  {RECITERS.map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => { setSelectedReciter(r); setReciterOpen(false) }}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-muted transition-colors",
+                        r.id === selectedReciter.id && "bg-islamic-green/5 text-islamic-green font-medium"
+                      )}
+                    >
+                      <span className="h-6 w-6 rounded-full bg-gradient-to-br from-islamic-green to-islamic-gold flex items-center justify-center text-white text-[10px] font-bold">
+                        {r.name.charAt(0)}
+                      </span>
+                      <div className="text-left">
+                        <p className="text-sm">{r.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{r.country}</p>
+                      </div>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </div>
+
+            {/* Play button */}
+            <RippleButton
+              variant="primary"
+              size="md"
+              className={cn(
+                "gap-2 rounded-full px-6 shadow-md transition-all h-11",
+                isCurrentTrack && isPlaying && "animate-glow"
+              )}
+              onClick={handlePlaySurah}
+            >
+              {isCurrentTrack && isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-islamic-spin" />
+                  <span>Loading...</span>
+                </>
+              ) : isCurrentTrack && isPlaying ? (
+                <>
+                  <div className="wave-bars">
+                    <span className="bg-white" /><span className="bg-white" /><span className="bg-white" /><span className="bg-white" /><span className="bg-white" />
+                  </div>
+                  <span>Pause</span>
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 fill-white" />
+                  <span>Play Full Surah</span>
+                </>
+              )}
+            </RippleButton>
+
+            {/* Translation selector */}
+            <div className="flex items-center gap-2">
+              <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+              <div className="flex rounded-lg border border-border/60 overflow-hidden">
+                {(["off", "en", "ur"] as const).map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => setTranslationLanguage(lang)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium transition-all",
+                      translationLanguage === lang
+                        ? "bg-islamic-green text-white"
+                        : "text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {lang === "off" ? "Off" : lang === "en" ? "English" : "Urdu"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Bismillah */}
+        {surahNumber !== 9 && surahNumber !== 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-6 glass-premium rounded-2xl border border-islamic-green/10"
+          >
+            <p className="text-2xl md:text-3xl font-amiri text-islamic-green-dark dark:text-islamic-green/90 leading-relaxed" dir="rtl">
+              بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+            </p>
+            <p className="text-xs text-muted-foreground mt-2 italic">
+              In the Name of Allah, the Most Gracious, the Most Merciful
+            </p>
+          </motion.div>
+        )}
+
         <FontControls />
         <ReadingProgress
           surahNumber={surahNumber}
@@ -272,56 +436,46 @@ export default function SurahPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="space-y-4"
+          className="space-y-3"
         >
-          {ayahs.map((ayah, idx) => {
+          {ayahs.map((ayah) => {
             const primary = getPrimaryTranslation(ayah.ayahNumber)
-            const secondary = getSecondaryTranslation(ayah.ayahNumber)
             return (
-              <div key={`${ayah.surahNumber}:${ayah.ayahNumber}`}>
-                <AyahCard
-                  ayah={ayah}
-                  surahName={surah.nameSimple}
-                  translation={primary}
-                  audioUrl={surahAudioUrl}
-                  isBookmarked={isBookmarked(ayah.surahNumber, ayah.ayahNumber)}
-                  isFavorited={isFavorite(ayah.surahNumber, ayah.ayahNumber)}
-                  onToggleBookmark={() => {
-                    if (isBookmarked(ayah.surahNumber, ayah.ayahNumber)) {
-                      removeBookmark(ayah.surahNumber, ayah.ayahNumber)
-                    } else {
-                      addBookmark(ayah.surahNumber, ayah.ayahNumber)
-                    }
-                  }}
-                  onToggleFavorite={() => {
-                    toggleFavorite(ayah.surahNumber, ayah.ayahNumber)
-                  }}
-                  onHighlight={(color) => {
-                    toggleHighlight(ayah.surahNumber, ayah.ayahNumber, color)
-                  }}
-                  onNote={() => {}}
-                />
-
-                {secondary && (
-                  <div className="px-4 pb-4 -mt-2">
-                    <div
-                      className="text-sm leading-relaxed text-muted-foreground border-t pt-3"
-                      dir={secondary.language === "ur" ? "rtl" : undefined}
-                    >
-                      {secondary.text}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <AyahCard
+                key={`${ayah.surahNumber}:${ayah.ayahNumber}`}
+                ayah={ayah}
+                surahName={surah.nameSimple}
+                translation={primary}
+                audioUrl={surahAudioUrl}
+                isBookmarked={bookmarks.some((b) => b.surahNumber === ayah.surahNumber && b.ayahNumber === ayah.ayahNumber)}
+                isFavorited={favorites.some((f) => f.surahNumber === ayah.surahNumber && f.ayahNumber === ayah.ayahNumber)}
+                onToggleBookmark={() => {
+                  if (bookmarks.some((b) => b.surahNumber === ayah.surahNumber && b.ayahNumber === ayah.ayahNumber)) {
+                    removeBookmark(ayah.surahNumber, ayah.ayahNumber)
+                  } else {
+                    addBookmark(ayah.surahNumber, ayah.ayahNumber)
+                  }
+                }}
+                onToggleFavorite={() => {
+                  toggleFavorite(ayah.surahNumber, ayah.ayahNumber)
+                }}
+                onHighlight={(color) => {
+                  toggleHighlight(ayah.surahNumber, ayah.ayahNumber, color)
+                }}
+                onNote={() => {}}
+              />
             )
           })}
         </motion.div>
 
         <div className="py-8 text-center">
+          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-gradient-to-br from-islamic-green/10 to-islamic-gold/10 mb-4">
+            <Book className="h-6 w-6 text-islamic-green" />
+          </div>
           <p className="text-sm text-muted-foreground">
             End of Surah {surah.nameSimple || surah.nameArabic}
           </p>
-          <p className="text-2xl mt-2 text-muted-foreground" dir="rtl" aria-label="Bismillah">
+          <p className="text-3xl mt-3 text-islamic-green/80" dir="rtl">
             &#xFDFD;
           </p>
         </div>
